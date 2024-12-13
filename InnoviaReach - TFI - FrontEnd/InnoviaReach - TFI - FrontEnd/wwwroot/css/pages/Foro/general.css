@@ -1,0 +1,173 @@
+﻿@import url("https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap");
+
+/** {
+    padding: 0;
+    box-sizing: border-box;
+}*/
+
+:root {
+    --whiteColor: #ffffff;
+    --lightWhiteColor: #f0f3f5;
+    --darkRedColor: #a52e2d;
+    --lightGrayColor: #f0f3f5;
+    --mediumGray: #c9cdcf;
+    --darkGrayColor: #686c6e;
+    --lightBlackColor: #383a3b;
+    --fs14: 1.4rem;
+    --fs18: 1.8rem;
+    --fs24: 2.4rem;
+    --transition: all 0.3s ease;
+}
+
+/*html {*/
+   /* font-size: 62.5%;*/
+    /*scroll-behavior: smooth;
+}*/
+
+/*body {
+    font-family: "Inter", sans-serif;
+    font-weight: 400;
+    font-size: 1.5rem;
+    line-height: 1.5;
+    background-color: var(--whiteColor);
+}*/
+
+/*ul {
+    list-style: none;
+}
+
+a {
+    color: var(--darkRedColor);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+    a:hover {
+        text-decoration: underline;
+    }*/
+
+/*img {
+    display: block;
+    max-width: 100%;
+}
+*/
+/*input {
+    border: none;
+    outline: none;
+}
+
+    input:focus::placeholder {
+        opacity: 0;
+    }
+*/
+.foro-btn {
+    padding: 0.7rem 1rem;
+    border-radius: 0.3rem;
+    cursor: pointer;
+    font-size: var(--fs14);
+    font-weight: 500;
+    text-align: center;
+    height: 3.6rem;
+}
+
+    .foro-btn:hover {
+        text-decoration: none;
+    }
+
+.foro-btn-red {
+    background-color: var(--darkRedColor);
+    border: 0.1rem solid var(--darkRedColor);
+    color: var(--whiteColor);
+}
+
+    .foro-btn-red:hover {
+        background-color: #cd4342;
+    }
+
+.foro-btn-white {
+    border: 0.2rem solid var(--mediumGray);
+    color: var(--darkGrayColor);
+}
+
+.foro-btn-white:hover {
+    border-color: #686c6e;
+}
+
+.foro-main {
+    height: 90vh;
+    width: auto;
+}
+
+@media (min-width: 768px) {
+    foro-main {
+        padding-top: 1rem;
+    }
+}
+
+.foro-container {
+    width: 100%;
+}
+
+/*@media (min-width: 1300px) and (max-width: 1599px) {
+    .foro-container {
+        width: 1200px;
+    }
+}*/
+
+
+.foro-details h3{
+    cursor: pointer; /* Cambia el cursor a una mano al pasar sobre el texto */
+    transition: all 0.3s ease; /* Agrega una transición suave */
+}
+.foro-details h3:hover {
+    text-decoration: underline; /* Subraya el texto al pasar sobre él */
+    color: #0000ff; /* Cambia el color del texto al pasar sobre él (opcional) */
+}
+
+.foro-sub-details span:nth-child(1) {
+    cursor: pointer; /* Cambia el cursor a una mano al pasar sobre el texto */
+    transition: all 0.3s ease; /* Agrega una transición suave */
+}
+.foro-sub-details span:nth-child(1):hover {
+    text-decoration: underline; /* Subraya el texto al pasar sobre él */
+    color: #0000ff; /* Cambia el color del texto al pasar sobre él (opcional) */
+}
+
+.foro-favorite i {
+    color:black;
+    font-size: 20px;
+    transition: font-size 0.3s ease; /* Aquí defines la transición */
+}
+
+.foro-favorite i:hover {
+    cursor: pointer;
+    font-size: 26px;
+}
+
+.carousel-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.carousel-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 20px;
+    padding: 10px;
+}
+
+.forum-card {
+    min-width: 300px;
+    background-color: #f0f0f0;
+    padding: 15px;
+    border-radius: 10px;
+    scroll-snap-align: start;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.foro-menu-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}

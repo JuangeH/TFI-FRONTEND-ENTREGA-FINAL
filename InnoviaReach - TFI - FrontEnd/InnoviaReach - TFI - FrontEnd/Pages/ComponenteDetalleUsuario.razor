@@ -1,0 +1,322 @@
+﻿@using System.Net.Http.Headers
+@inject HttpClient httpClient
+@inject ISessionStorageService sessionStorage
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<Resource> Localizer
+
+@if (!isConfigLoading)
+{
+    <div class="userconfig-container">
+        <div class="userconfig-main">
+            <div class="userconfig-main-container">
+                <div class="userconfig-profile">
+                    <div class="userconfig-profile-avatar">
+                        <img src="/assets/Usuario Menu/user.png" alt="" class="userconfig-profile-img">
+                        <div class="userconfig-profile-name">@userConfigResponse.Username</div>
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1508247967583-7d982ea01526?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=2250&q=80" alt="" class="userconfig-profile-cover">
+                    <div class="userconfig-profile-menu">
+                        <a class="userconfig-profile-menu-link @(activeTab == "Configuración" ? "active" : "")" @onclick="@(() => SetActiveTab("Configuración"))">
+                            @Localizer["Configuration"]
+                        </a>
+                    </div>
+                </div>
+                <div class="userconfig-timeline">
+                    <div class="userconfig-timeline-left">
+                        <div class="userconfig-event box">
+                            <div class="userconfig-event-wrapper">
+                                <img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1950&q=80" class="event-img" />
+                                <div class="userconfig-event-date">
+                                    <div class="userconfig-event-day">@DateTime.Now.Day.ToString()/@DateTime.Today.Month.ToString()/@DateTime.Today.Year.ToString()</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="userconfig-pages box">
+                            @if (ForosDestacados.Count == 0)
+                            {
+                                <div class="userconfig-intro-title">
+                                    @Localizer["NoForums"]
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="userconfig-intro-title">
+                                    @Localizer["TopForums"]
+                                </div>
+                                @foreach (var item in ForosDestacados)
+                                {
+                                    <div class="userconfig-user">
+                                        <img src="https://media.es.wired.com/photos/6442f341a566376ee967ba24/16:9/w_2560%2Cc_limit/GettyImages-1424828162.jpg" alt="" class="user-img">
+                                        <div class="userconfig-username">@item.Titulo</div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                    <div class="userconfig-timeline-right">
+                        <div class="userconfig-album box">
+                            <div class="userdetailconfig-container">
+                                <div class="userdetailconfig-row">
+                                    <div class="userdetailconfig-col-md-12">
+                                        <h1 class="userdetailconfig-title">@Localizer["UserDetails"]</h1>
+                                    </div>
+                                </div>
+                                <div class="userdetailconfig-row">
+                                    <div class="userdetailconfig-col-md-4">
+                                        <div class="userdetailconfig-profile-image">
+                                            <img src="/assets/Usuario Menu/user.png" class="userdetailconfig-fullwidth" />
+                                        </div>
+                                    </div>
+                                    <div class="userdetailconfig-col-md-8">
+                                        <h5 class="userdetailconfig-subtitle">@Localizer["Information"]</h5>
+                                        <div class="userdetailconfig-info-grid">
+                                            <div class="userdetailconfig-info-labels">
+                                                <p>@Localizer["Username"]</p>
+                                                <p>@Localizer["Email"]</p>
+                                                <p>@Localizer["Phone"]</p>
+                                                <p>@Localizer["Language"]</p>
+                                                <p>@Localizer["Status"]</p>
+                                                <p>@Localizer["Password"]</p>
+                                            </div>
+                                            <div class="userdetailconfig-info-values">
+                                                <p>@userConfigResponse.Username</p>
+                                                <p>@userConfigResponse.Mail</p>
+                                                <p>@userConfigResponse.Telefono</p>
+                                                <p>@userConfigResponse.Idioma</p>
+                                                @if (!userConfigResponse.Estado)
+                                                {
+                                                    <p>@Localizer["Active"]</p>
+                                                }
+                                                else
+                                                {
+                                                    <p>@Localizer["Inactive"]</p>
+                                                }
+                                                <p>*******************</p>
+                                            </div>
+                                            <div class="userdetailconfig-info-actions">
+                                                @if (user.UserName == UserName)
+                                                {
+                                                    <button class="userdetailconfig-btn userdetailconfig-btn--green" @onclick="OpenDialogAsync">
+                                                        <span class="fa fa-pencil"></span> @Localizer["ChangePassword"]
+                                                    </button>
+                                                    <CultureSelector></CultureSelector>
+                                                }
+                                                @if (user.RoleName == "Admin" && user.UserName != UserName)
+                                                {
+                                                    @if (userConfigResponse.Estado==false)
+                                                    {
+                                                        <button class="userdetailconfig-btn-red userdetailconfig-btn--green" @onclick="OpenBanDialogAsync">
+                                                            <span class="fa fa-ban"></span> @Localizer["DisableUser"]
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button class="userdetailconfig-btn-red userdetailconfig-btn--green" style="background-color: #71ce73" @onclick="DesbanearUsuario">
+                                                            <span class="fa fa-check-circle-o"></span> @Localizer["EnableUser"]
+                                                        </button>
+                                                    }
+                                                    
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <SpinnerLoading show=@isConfigLoading />
+}
+<ChangePasswordDialog ShowPopup="@showChangePassPopup" OnClose="CloseChagePassDialogAsync" />
+<BanUserDialog UserName="@UserName" ShowPopup="@showBanPopup" OnClose="CloseBanDialogAsync" />
+
+@code {
+    [Parameter]
+    public string UserName { get; set; }
+    private bool UserBanned = false;
+    private string activeTab = "Configuración"; // Tab inicial
+    private bool showChangePassPopup = false;
+    private bool showBanPopup = false;
+    public List<ForoResponse> ForosGenerales = new();
+    public List<ForoResponse> ForosDestacados = new();
+    public LoginTokenResponse user;
+    public UserConfigResponse userConfigResponse;
+    private bool isConfigLoading;
+    private bool Suscripcion = false;
+
+    private void SetActiveTab(string tabName)
+    {
+        activeTab = tabName;
+    }
+
+    protected async Task OpenDialogAsync()
+    {
+        showChangePassPopup = true;
+    }
+
+    protected async Task CloseChagePassDialogAsync()
+    {
+        showChangePassPopup = false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isConfigLoading = true;
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                try
+                {
+                    user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+                    httpClient.DefaultRequestHeaders.Clear();
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+                    Suscripcion = await httpClient.GetFromJsonAsync<bool>("Suscripcion/ValidarSuscripcion");
+                    ForosGenerales = await httpClient.GetFromJsonAsync<List<ForoResponse>>("Foro/ObtenerForosGenerales");
+                    userConfigResponse = await httpClient.GetFromJsonAsync<UserConfigResponse>($"Users/ObtenerUsuario?UserName={UserName}");
+                    if (!string.IsNullOrEmpty(user.UserName))
+                    {
+                        ForosDestacados = ForosGenerales
+                            .Where(foro => foro.NombreUsuarioCreador == UserName)
+                            .OrderByDescending(foro => foro.Visitas)
+                            .Take(3)
+                            .ToList();
+                    }
+                }
+                catch (Exception)
+                {
+
+                }
+                await Task.Delay(1000);
+            }
+        }
+        catch (Exception)
+        {
+
+        }
+        finally
+        {
+            isConfigLoading = false;
+            StateHasChanged();
+        }
+
+    }
+    protected async Task ModificarSuscripcion()
+    {
+        try
+        {
+            user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+            httpClient.DefaultRequestHeaders.Clear();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+            var result = await httpClient.PutAsJsonAsync<string>($"Suscripcion/ActualizarSuscripcion", null);
+            Suscripcion = await httpClient.GetFromJsonAsync<bool>("Suscripcion/ValidarSuscripcion");
+
+            if (result.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Suscripción modificada", Severity.Success, options =>
+                {
+                    options.VisibleStateDuration = 1000;
+                });
+            }
+            if (!Suscripcion)
+            {
+                user.Suscripcion = "Basico";
+            }
+            else
+            {
+                user.Suscripcion = "Premium";
+            }
+
+            await sessionStorage.SetItemAsync("user", user);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al actualizar la suscripción", Severity.Error, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+    protected async Task DesbanearUsuario()
+    {
+        try
+        {
+            user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+            httpClient.DefaultRequestHeaders.Clear();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+            var result = await httpClient.PostAsJsonAsync<UsuarioDesbanRequest>($"Users/DesbanearUsuario", new UsuarioDesbanRequest(){UserName = this.UserName});
+            userConfigResponse = await httpClient.GetFromJsonAsync<UserConfigResponse>($"Users/ObtenerUsuario?UserName={UserName}");
+            UserBanned = userConfigResponse.Estado;
+
+            if (result.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Usuario desbaneado", Severity.Success, options =>
+                {
+                    options.VisibleStateDuration = 1000;
+                });
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al desbanear el usuario", Severity.Error, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+    protected async Task OpenBanDialogAsync()
+    {
+        showBanPopup = true;
+    }
+    protected async Task CloseBanDialogAsync()
+    {
+        try
+        {
+            user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+            httpClient.DefaultRequestHeaders.Clear();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+            userConfigResponse = await httpClient.GetFromJsonAsync<UserConfigResponse>($"Users/ObtenerUsuario?UserName={UserName}");
+            UserBanned = userConfigResponse.Estado;
+            showBanPopup = false;
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al intentar banear el usuario", Severity.Error, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+}

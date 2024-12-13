@@ -1,0 +1,147 @@
+﻿@inject IJSRuntime JSRuntime
+@using System.Net.Http.Headers
+@inject ISnackbar Snackbar
+@inject ISessionStorageService sessionStorage
+@inject HttpClient httpClient
+@inject NavigationManager NavManager
+@inject IStringLocalizer<Resource> Localizer
+
+<nav>
+    <div class="sidebar-top">
+        <span class="expand-btn">
+            <img src="assets/ToolBar/chevron.svg" alt="Chevron">
+        </span>
+    </div>
+    <div class="sidebar-links">
+        <ul>
+            <li>
+                <a href="/" class="active" title="@Localizer["RecommendationsTooltip"]">
+                    <div class="icon">
+                        <img src="assets/ToolBar/portfolio.svg" title="@Localizer["RecommendationsTooltip"]">
+                    </div>
+                    <span class="link hide">@Localizer["Recommendations"]</span>
+                </a>
+            </li>
+            <li>
+                <a href="Catalogo" title="@Localizer["CatalogTooltip"]">
+                    <div class="icon">
+                        <img src="assets/ToolBar/portfolio.svg" title="@Localizer["CatalogTooltip"]">
+                    </div>
+                    <span class="link hide">@Localizer["Catalog"]</span>
+                </a>
+            </li>
+            <li>
+                <a href="foros" title="@Localizer["ForumsTooltip"]">
+                    <div class="icon">
+                        <img src="assets/ToolBar/analytics.svg" title="@Localizer["ForumsTooltip"]">
+                    </div>
+                    <span class="link hide">@Localizer["Forums"]</span>
+                </a>
+            </li>
+            @if (esAdmin)
+            {
+                <li>
+                    <a href="Auditoria" title="@Localizer["AuditTooltip"]">
+                        <div class="icon">
+                            <img src="assets/ToolBar/dashboard.svg" title="@Localizer["AuditTooltip"]">
+                        </div>
+                        <span class="link hide">@Localizer["Audit"]</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="Bitacora" title="@Localizer["LogsTooltip"]">
+                        <div class="icon">
+                            <img src="assets/ToolBar/reports.svg" title="@Localizer["LogsTooltip"]">
+                        </div>
+                        <span class="link hide">@Localizer["Logs"]</span>
+                    </a>
+                </li>
+            }
+        </ul>
+    </div>
+    <div class="sidebar-bottom">
+        <div class="sidebar-links">
+            <ul>
+                <li>
+                    <a href="Config" title="@Localizer["SubscriptionTooltip"]" class="tooltip">
+                        <img src="assets/ToolBar/settings.svg" alt="Settings">
+                        <span class="link hide">@Localizer["Subscription"]</span>
+                        <span class="tooltip__content">@Localizer["SettingsTooltip"]</span>
+                    </a>
+                </li>
+            </ul>
+            <ul>
+                <li>
+                    <a href="javascript:void(0)" @onclick="CerrarSesion" title="@Localizer["LogoutTooltip"]">
+                        <div class="icon">
+                            <img src="/assets/Toolbar/door-enter-svgrepo-com (2).svg" title="@Localizer["LogoutTooltip"]">
+                        </div>
+                        <span class="link hide">@Localizer["Logout"]</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="sidebar__profile">
+            <div class="avatar__wrapper">
+                <img class="avatar" src="/assets/Usuario Menu/user.png" alt="Profile">
+            </div>
+            <div class="avatar__name hide">
+                @if (user != null)
+                {
+                    <div class="email">@user.Email</div>
+                }
+                else
+                {
+                    <div class="email">@Localizer["Loading"]</div>
+                }
+            </div>
+        </div>
+    </div>
+</nav>
+
+@code {
+    public LoginTokenResponse? user;
+    public bool esAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+        if (user != null)
+        {
+            esAdmin = user.RoleName == "Admin";
+        }
+        httpClient.DefaultRequestHeaders.Clear();
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("expandCollapseBody");
+                await JSRuntime.InvokeVoidAsync("activateLinks");
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private async Task CerrarSesion()
+    {
+        await sessionStorage.SetItemAsync("popupShown", false);
+        await sessionStorage.RemoveItemAsync("user");
+
+        httpClient.DefaultRequestHeaders.Authorization = null;
+
+        Snackbar.Add(Localizer["LogoutMessage"], Severity.Success, options =>
+        {
+            options.VisibleStateDuration = 1000;
+        });
+
+        NavManager.NavigateTo("login");
+    }
+}

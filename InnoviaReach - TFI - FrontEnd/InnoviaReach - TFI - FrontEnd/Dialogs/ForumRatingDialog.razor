@@ -1,0 +1,70 @@
+﻿@using System.Net.Http.Json
+@using System.Net.Http.Headers
+@inject HttpClient httpClient
+@inject ISessionStorageService sessionStorage
+@inject IStringLocalizer<Resource> Localizer
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-3" /> @Localizer["RateComment"]
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <p>@Localizer["From"] @Usuario</p>
+        <MudRating @bind-SelectedValue="_rating" Class="mt-3" @onclick="@(()=> ApplyRating())" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Close" Class="px-10">@Localizer["Close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public int CodigoComentario { get; set; }
+    [Parameter] public string Usuario { get; set; }
+
+    private bool _visible;
+    private int _rating;
+    private readonly DialogOptions _dialogOptions = new() { FullWidth = true };
+
+    private void Close() => MudDialog.Close();
+
+    private async Task ApplyRating()
+    {
+        try
+        {
+            // LLAMAR ENDPOINT APLICARRATING
+            var user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+            var result = await httpClient.PostAsJsonAsync<CalificarComentarioRequest>(
+                $"Foro/CalificarComentario",
+                new CalificarComentarioRequest
+                    {
+                        Comentario_ID = CodigoComentario,
+                        Puntaje = _rating,
+                        User_ID = string.Empty
+                    });
+
+            if (result.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Rating aplicado", Severity.Success, options =>
+                {
+                    options.VisibleStateDuration = 1000;
+                });
+            }
+
+            MudDialog.Close();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al aplicar rating", Severity.Error, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+    }
+}

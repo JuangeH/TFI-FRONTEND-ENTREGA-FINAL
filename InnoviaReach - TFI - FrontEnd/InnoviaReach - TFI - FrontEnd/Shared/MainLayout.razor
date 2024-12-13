@@ -1,0 +1,67 @@
+﻿@using InnoviaReach___TFI___FrontEnd.Services
+@inherits LayoutComponentBase
+@inject NavigationManager NavManager
+@inject LocalizationService LocalizationService
+@inject ISessionStorageService SessionStorageService
+
+<MudThemeProvider @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<PageTitle>InnoviaReach</PageTitle>
+
+@if (_LoggedIn)
+{
+    <div class="page">
+        <div class="sidebar">
+            <div class="NavMenu">
+                <NavMenu />
+            </div>
+            <div class="ContentInnovia">
+                <main>
+                    <div>
+                        <a href="/"></a>
+                    </div>
+                    <article>
+                        @Body
+                    </article>
+                </main>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <p>Redirigiendo al inicio de sesión...</p>
+}
+
+@code {
+    private MudTheme _theme = new();
+    private bool _isDarkMode = true;
+    private bool _LoggedIn = false;
+    private LoginTokenResponse? user;
+
+    [Inject]
+    private ISessionStorageService _sessionStorageService { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            user = await _sessionStorageService.GetItemAsync<LoginTokenResponse>("user");
+
+            if (user is null)
+            {
+                NavManager.NavigateTo("/login");
+            }
+            else
+            {
+                _LoggedIn = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            
+        }
+    }
+}

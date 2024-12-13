@@ -1,0 +1,107 @@
+﻿@layout LoginLayout
+@page "/Registro"
+@using System.Globalization
+
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
+@inject HttpClient httpClient
+@inject NavigationManager NavManager
+@inject IDialogService DialogService
+@inject IStringLocalizer<Resource> Localizer
+@inject ISnackbar Snackbar
+
+<EditForm Model="_registerRequest">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="background"></div>
+    <div class="centering">
+        <form class="my-form register" @onsubmit="@(()=> Submit())">
+            <div class="signup-welcome-row">
+                <img class="signup-welcome" alt="@Localizer["LogoAlt"]" src="/assets/Registrarse/logo.svg" />
+                <h1>@Localizer["SignUpTitle"]</h1>
+            </div>
+            <div class="box-conteiner">
+                <div class="register-box">
+                    <div class="my-form__content">
+                        <div class="text-field">
+                            <label for="nombre">@Localizer["Username"]</label>
+                            <input aria-label="@Localizer["Username"]" type="text" @bind="_registerRequest.UserName" id="Username"
+                                   name="Username" placeholder="@Localizer["UsernamePlaceHolder"]" autocomplete="off"
+                                   pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$" required />
+                        </div>
+
+                        <div class="text-field">
+                            <label for="email">@Localizer["EmailLabel"]</label>
+                            <input aria-label="@Localizer["EmailLabel"]" type="email" id="email" @bind="_registerRequest.Email"
+                                   name="email" placeholder="@Localizer["EmailPlaceholder"]" autocomplete="off" required />
+                        </div>
+
+                        <div class="text-field">
+                            <label for="password">@Localizer["PasswordLabel"]</label>
+                            <input id="password" type="password" @bind="_registerRequest.Password"
+                                   name="password" placeholder="@Localizer["PasswordPlaceholder"]"
+                                   title="@Localizer["PasswordTitle"]"
+                                   pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$" required />
+                        </div>
+
+                        <div class="text-field">
+                            <label for="confirm-password">@Localizer["ConfirmPasswordLabel"]</label>
+                            <input id="confirm-password" type="password" @bind="_registerRequest.ConfirmPassword"
+                                   name="confirm-password" placeholder="@Localizer["ConfirmPasswordPlaceholder"]"
+                                   title="@Localizer["PasswordTitle"]"
+                                   pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$" required />
+                        </div>
+
+                        <div class="text-field">
+                            <label for="numero">@Localizer["PhoneLabel"]</label>
+                            <input aria-label="@Localizer["PhoneLabel"]" type="text" @bind="_registerRequest.PhoneNumber" id="numero"
+                                   name="numero" placeholder="@Localizer["PhonePlaceholder"]" autocomplete="off" 
+                                   pattern="^\d+$" required />
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <input type="submit" class="my-form__button" value="@Localizer["SignUpButton"]" />
+            <div class="my-form__actions">
+                <div>
+                    @Localizer["TermsMessage"]
+                </div>
+                <div class="my-form__signin">
+                    <a href="/" title="@Localizer["SignInLink"]">@Localizer["SignInLink"]</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</EditForm>
+
+@code {
+    bool success;
+    RegisterRequest _registerRequest = new RegisterRequest();
+
+    protected async Task Submit()
+    {
+        try
+        {
+            _registerRequest.Idioma = CultureInfo.CurrentCulture.Name;
+            var result = await httpClient.PostAsJsonAsync("https://api-gateway-apigateway.onrender.com/Auth/Register", _registerRequest);
+
+            if (result.IsSuccessStatusCode)
+            {
+                await DialogService.ShowAsync<DialogVerificacion>(Localizer["SuccessMessage"]);
+                await Task.Delay(1000);
+                NavManager.NavigateTo("/");
+            }
+            else
+            {
+                throw new Exception();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al registrar usuario", Severity.Error, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+    }
+}

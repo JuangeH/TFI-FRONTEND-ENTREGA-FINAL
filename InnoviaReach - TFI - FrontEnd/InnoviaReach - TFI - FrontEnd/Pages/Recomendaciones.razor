@@ -1,0 +1,206 @@
+﻿@page "/"
+
+@using System.Net.Http.Headers
+@inject ISnackbar Snackbar
+@inject ISessionStorageService sessionStorage
+@inject HttpClient httpClient
+@inject NavigationManager NavManager
+@inject IStringLocalizer<Resource> Localizer
+@inject ISnackbar Snackbar
+
+<MudTabs Elevation="2" Rounded="false" ApplyEffectsToContainer="false" PanelClass="pa-6" Centered=true Class="foro-mudTabs" Border="false">
+    <MudTabPanel Text="@Localizer["IndividualRecommendations"]">
+        @if (!areRecsLoading)
+        {
+            <VideojuegoDetailDialog Show="@showPopup" videojuego="@VideojuegoSeleccionado" OnClose="ClosePopup"></VideojuegoDetailDialog>
+            <section class="sc-popular bg-violet-dark-active" style="height: 90vh">
+                <div class="container">
+                    @if (recomendacionesVid.Count == 0)
+                    {
+                        <div class="sc-title">
+                            <h3>@Localizer["NoActivityForRecommendations"]</h3>
+                            <div class="line"></div>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var group in recomendacionesVid.GroupBy(r => r.VideojuegoReferencia))
+                        {
+                            var tipos = group.Select(g => g.TipoRecomendacion).Distinct().ToList();
+                            <div class="sc-title">
+                                @if (tipos.Contains("Contenido") && tipos.Contains("Foro"))
+                                {
+                                    <h3>@string.Format(Localizer["GamesRecommendedCommunityVisit"], group.Key)</h3>
+                                }
+                                else if (tipos.Contains("Contenido"))
+                                {
+                                    <h3>@string.Format(Localizer["GamesRecommendedVisit"], group.Key)</h3>
+                                }
+                                else if (tipos.Contains("Foro"))
+                                {
+                                    <h3>@string.Format(Localizer["GamesRecommendedCommunity"], group.Key)</h3>
+                                }
+                                <div class="line"></div>
+                            </div>
+
+                            <div class="recomendaciones-container" style="overflow-x: scroll; overflow-y: auto; width: auto;">
+                                <div class="recomendaciones-row-recommended">
+                                    @foreach (var item in group.DistinctBy(r => r.VideojuegoRecomendado))
+                                    {
+                                        <div class="game-card" @onclick="@(() => OpenPopup(item.VideojuegoRecomendado))">
+                                            <div class="game-card-top rec-img-fit-cover">
+                                                <img class="rec-img" src=@item.VideojuegoRecomendadoImagen alt="">
+                                            </div>
+                                            <div class="game-card-bottom">
+                                                <div class="flex flex-col sm:flex-row justify-between items-start flex-wrap">
+                                                    <div class="py-1">
+                                                        <h4 class="text-white uppercase game-card-title">@item.VideojuegoRecomendado</h4>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </section>
+        }
+        else
+        {
+            <SpinnerLoading show=@areRecsLoading />
+        }
+    </MudTabPanel>
+    @if (user.Suscripcion!="Basico")
+    {
+        <MudTabPanel Text="@Localizer["CollaborativeRecommendations"]">
+            @if (!areRecsLoading)
+            {
+                <section class="sc-popular bg-violet-dark-active" style="height: 90vh">
+                    <div class="container">
+                        @if (recomendacionesUsr.Count == 0)
+                        {
+                            <div class="sc-title">
+                                <h3>@Localizer["NoUserActivityForRecommendations"]</h3>
+                                <div class="line"></div>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var group in recomendacionesUsr.GroupBy(r => r.TipoRecomendacion))
+                            {
+                                var tipos = group.Select(g => g.TipoRecomendacion).Distinct().ToList();
+                                <div class="sc-title">
+                                    @if (tipos.Contains("Visita"))
+                                    {
+                                        <h3>@Localizer["GamesRecommendedByVisits"]</h3>
+                                    }
+                                    else
+                                    {
+                                        <h3>@Localizer["GamesRecommendedByCommunity"]</h3>
+                                    }
+                                    <div class="line"></div>
+                                </div>
+
+                                <div class="recomendaciones-container" style="overflow-x: scroll; overflow-y: auto; width: auto;">
+                                    <div class="recomendaciones-row-recommended">
+                                        @foreach (var item in group.DistinctBy(r => r.VideojuegoRecomendado))
+                                        {
+                                            <div class="game-card" @onclick="@(() => OpenPopup(item.VideojuegoRecomendado))">
+                                                <div class="game-card-top rec-img-fit-cover">
+                                                    <img class="rec-img" src=@item.VideojuegoRecomendadoImagen alt="">
+                                                </div>
+                                                <div class="game-card-bottom">
+                                                    <div class="flex flex-col sm:flex-row justify-between items-start flex-wrap">
+                                                        <div class="py-1">
+                                                            <h4 class="text-white uppercase game-card-title">@item.VideojuegoRecomendado</h4>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </section>
+            }
+            else
+            {
+                <SpinnerLoading show=@areRecsLoading />
+            }
+        </MudTabPanel>
+    }
+</MudTabs>
+
+@code {
+    private bool areRecsLoading = true;
+    public LoginTokenResponse user = new();
+
+    private VideojuegoCatalogoDetalleResponse VideojuegoSeleccionado = new VideojuegoCatalogoDetalleResponse();
+    private ICollection<RecomendacionVideojuegoResponse> recomendacionesVid = new HashSet<RecomendacionVideojuegoResponse>();
+    private ICollection<RecomendacionUsuarioResponse> recomendacionesUsr = new HashSet<RecomendacionUsuarioResponse>();
+
+    private bool showPopup = false;
+    private string VideojuegoActual = "";
+
+    private void ClosePopup()
+    {
+        try
+        {
+            showPopup = false;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenPopup(string nombre)
+    {
+        try
+        {
+            showPopup = true;
+            var user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+            httpClient.DefaultRequestHeaders.Clear();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+            var response = await httpClient.GetFromJsonAsync<VideojuegoCatalogoDetalleResponse>($"Videojuego/ObtenerVideojuegoDetalleCatalogo?nombre={nombre}");
+            VideojuegoSeleccionado = response;
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al obtener el detalle del videojuego", Severity.Error, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+        
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                areRecsLoading = true;
+                user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+                httpClient.DefaultRequestHeaders.Clear();
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+                recomendacionesVid = await httpClient.GetFromJsonAsync<List<RecomendacionVideojuegoResponse>>("Recomendaciones/ObtenerRecomendacionesIndividuales");
+                recomendacionesUsr = await httpClient.GetFromJsonAsync<List<RecomendacionUsuarioResponse>>("Recomendaciones/ObtenerRecomendacionesColaborativas");
+            }
+            catch
+            {
+
+            }
+            finally
+            {
+                areRecsLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+}

@@ -1,0 +1,99 @@
+﻿@using System.Net.Http.Headers
+@inject ISessionStorageService sessionStorage
+@inject HttpClient httpClient
+@inject IJSRuntime JS
+@inject IStringLocalizer<Resource> Localizer
+@inject ISnackbar Snackbar
+
+<div class="newPost">
+    <h3>@Localizer["AddComment"]</h3>
+    <div class="toolbar">
+        <button type="button" data-func="bold"><i class="fa fa-bold"></i></button>
+        <button type="button" data-func="italic"><i class="fa fa-italic"></i></button>
+        <button type="button" data-func="underline"><i class="fa fa-underline"></i></button>
+    </div>
+    <div class="editor" contenteditable></div>
+    <div class="buttons">
+        <button data-func="clear" type="button" @onclick="@(() => Limpiar())">@Localizer["Clear"]</button>
+        <button data-func="save" type="button" @onclick="@(() => RegistrarComentario())">@Localizer["Submit"]</button>
+    </div>
+</div>
+
+@code {
+    public string contenido { get; set; }
+
+    [Parameter]
+    public int foro_Codigo { get; set; }
+
+    [Parameter]
+    public EventCallback CargaComentarioInicialCallBack { get; set; }
+
+    private async Task RegistrarComentario()
+    {
+        try
+        {
+            // Obtener el contenido del editor
+            contenido = await JS.InvokeAsync<string>("eval", "document.querySelector('.editor').innerHTML;");
+
+            // LLAMAR ENDPOINT
+            var user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+            httpClient.DefaultRequestHeaders.Clear();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+
+            var request = new ComentarioRequest
+                {
+                    Contenido = contenido,
+                    Foro_Codigo = foro_Codigo,
+                    User_ID = string.Empty,
+                    FechaCreacion = DateTime.Now,
+                    ComentarioPadre_Codigo = null
+                };
+            var result = await httpClient.PostAsJsonAsync<ComentarioRequest>("Foro/RegistrarComentario", request);
+
+            if (result.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Comentario registrado", Severity.Success, options =>
+                {
+                    options.VisibleStateDuration = 1000;
+                });
+            }
+
+            Limpiar();
+
+            await CargaComentarioInicialCallBack.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al registrar comentario", Severity.Error, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+    }
+
+    private async Task Limpiar()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", "document.querySelector('.editor').innerHTML = '';");
+            await JS.InvokeVoidAsync("eval", "localStorage.removeItem('wysiwyg');");
+            contenido = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al intentar limpar la carga de comentario", Severity.Warning, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("eval", "$('.newPost button[data-func]').click(function () { document.execCommand($(this).data('func'), false); });");
+            await JS.InvokeVoidAsync("eval", "$('.newPost select[data-func]').change(function () { var $value = $(this).find(':selected').val(); document.execCommand($(this).data('func'), false, $value); });");
+        }
+    }
+}

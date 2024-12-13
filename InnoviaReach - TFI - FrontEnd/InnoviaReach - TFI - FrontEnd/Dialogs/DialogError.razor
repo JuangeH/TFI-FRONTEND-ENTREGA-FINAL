@@ -1,0 +1,16 @@
+﻿@inject IStringLocalizer<Resource> Localizer
+
+<MudDialog>
+    <DialogContent>
+        @Localizer["VerifyEnteredData"]
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="Submit">@Localizer["Ok"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(true));
+}

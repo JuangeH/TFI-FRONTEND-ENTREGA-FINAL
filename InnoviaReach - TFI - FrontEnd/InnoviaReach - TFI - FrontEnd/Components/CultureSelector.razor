@@ -1,0 +1,83 @@
+﻿@using System.Globalization
+@using System.Net.Http.Headers
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Resource> Localizer
+@inject HttpClient httpClient
+@inject ISessionStorageService sessionStorage
+@inject ISnackbar Snackbar
+
+<p>
+    <label>
+        @(Localizer["SelectCulture"])
+        <select value="@selectedCulture.Name" @onchange="HandleSelectedCultureChanged">
+            @foreach (var culture in supportedCultures)
+            {
+                <option value="@culture.Name">@culture.DisplayName</option>
+            }
+        </select>
+    </label>
+</p>
+
+@code
+{
+    public LoginTokenResponse user = new();
+
+    private CultureInfo[] supportedCultures = new[]
+    {
+        new CultureInfo("en"),
+        new CultureInfo("es"),
+    };
+
+    private CultureInfo? selectedCulture;
+
+    protected override async Task OnInitializedAsync()
+    {
+        selectedCulture = CultureInfo.CurrentCulture;
+    }
+
+    private async Task HandleSelectedCultureChanged(ChangeEventArgs args)
+    {
+        try
+        {
+            var selectedValue = (string)args.Value!;
+            selectedCulture = CultureInfo.GetCultureInfo(selectedValue);
+
+            if (CultureInfo.CurrentCulture != selectedCulture)
+            {
+                var currentUri = Navigation.Uri;
+
+                var uri = new Uri(currentUri).GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
+
+                var cultureEscaped = Uri.EscapeDataString(selectedCulture.Name);
+                var uriEscaped = Uri.EscapeDataString(currentUri);
+                
+                user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+                if (user!=null)
+                {
+                    httpClient.DefaultRequestHeaders.Clear();
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user?.Token ?? string.Empty);
+                    var response = await httpClient.PostAsJsonAsync<CultureRequest>($"Users/Culture/Set", new CultureRequest() { culture = cultureEscaped, redirectUri = uriEscaped });
+                }
+                
+                Navigation.NavigateTo(
+                $"https://api-gateway-apigateway.onrender.com/Users/Culture?culture={cultureEscaped}&redirectUri={uriEscaped}",
+                forceLoad: true);
+
+                Snackbar.Add("Idioma modificado", Severity.Success, options =>
+                {
+                    options.VisibleStateDuration = 1000;
+                });
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al cambiar el idioma", Severity.Error, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+
+        
+    }
+}

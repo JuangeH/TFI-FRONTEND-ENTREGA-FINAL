@@ -1,0 +1,147 @@
+﻿@using InnoviaReach___TFI___FrontEnd.Dialogs
+@using System.Net.Http.Headers
+@inject ISessionStorageService sessionStorage
+@inject HttpClient httpClient
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<Resource> Localizer
+
+@* ComponenteComentarios.razor *@
+@foreach (var comentario in Comentarios)
+{
+    <ul class="comments-list reply-list">
+        <li>
+            <!-- Avatar -->
+            <div class="comment-avatar">
+                <img src="http://i9.photobucket.com/albums/a88/creaticode/avatar_2_zps7de12f8b.jpg" alt="Avatar">
+                <MudRating SelectedValue="1" ReadOnly="true" MaxValue="1" />
+                <div class="comment-punctuation">
+                    @comentario.PromedioPuntaje (@comentario.CantidadVotos)
+                </div>
+            </div>
+            <!-- Contenedor del Comentario -->
+            <div class="comment-box">
+                <div class="comment-head">
+                    @if (comentario.Creador == ForoSeleccionado.NombreUsuarioCreador)
+                    {
+                        <h6 class="comment-name by-author">@comentario.Creador</h6>
+                    }
+                    else
+                    {
+                        <h6 class="comment-name">@comentario.Creador</h6>
+                    }
+                    <span>@comentario.FechaCreacion</span>
+                    @if (user.Suscripcion != "Basico")
+                    {
+                        <i class="fa fa-reply" title="@Localizer["Reply"]" @onclick="@(() => ToggleRespuesta(comentario.Codigo))"></i>
+                    }
+                    @if (user.RoleName == "Admin")
+                    {
+                        <i class="fa fa-ban" title="@Localizer["Delete"]" @onclick="@(() => EliminarComentario(comentario.Codigo))"></i>
+                    }
+                    @if (comentario.Creador != user?.UserName)
+                    {
+                        <i class="fa fa-heart" title="@Localizer["Like"]" @onclick="@(() => Abrir(comentario.Codigo, comentario.Creador))"></i>
+                    }
+                </div>
+                <div class="comment-content">
+                    @(new MarkupString(@comentario.Contenido))
+                </div>
+                @if (ComentarioAbierto == comentario.Codigo)
+                {
+                    @if (user.Suscripcion != "Basico")
+                    {
+                        <ComponenteCargaRespuesta comentarioPadre_Codigo="comentario.Codigo"
+                                      foro_Codigo="ForoSeleccionado.Codigo"
+                                      comentarioPadre_Creador="@comentario.Creador"
+                                      RegistrarComentarioCallBack="RegistrarComentarioCallBack" />
+                    }
+                }
+            </div>
+        </li>
+    </ul>
+    @if (comentario.Respuestas.Any())
+    {
+        <ComponenteComentarios Comentarios="@comentario.Respuestas"
+                       ForoSeleccionado="ForoSeleccionado"
+                       ComentarioAbierto="ComentarioAbierto"
+                       OnToggleRespuesta="@ToggleRespuesta"
+                       RegistrarComentarioCallBack="RegistrarComentarioCallBack" />
+    }
+}
+
+@code {
+    [Parameter]
+    public ICollection<ComentarioResponse> Comentarios { get; set; }
+
+    [Parameter]
+    public ForoResponse ForoSeleccionado { get; set; }
+
+    [Parameter]
+    public int? ComentarioAbierto { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnToggleRespuesta { get; set; }
+
+    [Parameter]
+    public EventCallback RegistrarComentarioCallBack { get; set; }
+
+    public LoginTokenResponse user = new();
+
+    private async Task ToggleRespuesta(int codigoComentario)
+    {
+        await OnToggleRespuesta.InvokeAsync(codigoComentario);
+    }
+
+    protected async Task Abrir(int codigo, string usuario)
+    {
+        var parameters = new DialogParameters { { "CodigoComentario", codigo }, { "Usuario", usuario } };
+        var dialog = DialogService.Show<ForumRatingDialog>(Localizer["AddRating"], parameters);
+        var result = await dialog.Result;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+            }
+            catch (Exception)
+            {
+
+            }
+        }
+    }
+
+    private async Task EliminarComentario(int CodComentario)
+    {
+        try
+        {
+            var user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+            httpClient.DefaultRequestHeaders.Clear();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+
+            var result = await httpClient.DeleteAsync($"Foro/EliminarComentario?ComentarioId={CodComentario}");
+
+            if (result.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Comentario eliminado", Severity.Success, options =>
+                {
+                    options.VisibleStateDuration = 1000;
+                });
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al eliminar comentario", Severity.Error, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+    }
+}

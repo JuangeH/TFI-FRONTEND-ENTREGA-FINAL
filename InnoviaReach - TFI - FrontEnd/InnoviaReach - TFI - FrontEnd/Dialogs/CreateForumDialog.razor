@@ -1,0 +1,157 @@
+﻿@using System.Net.Http.Headers
+@inject ISessionStorageService sessionStorage
+@inject HttpClient httpClient
+@inject IStringLocalizer<Resource> Localizer
+@inject ISnackbar Snackbar
+
+@if (isSubmitting)
+{
+    <SpinnerLoading show=@isSubmitting />
+}
+else
+{
+    @if (ShowPopup)
+    {
+        <div class="createforum-popup-overlay"></div> <!-- Overlay to block the background -->
+    }
+
+    <div class="createforum-popup @(ShowPopup ? "active" : "")">
+        <div class="createforum-close-btn" @onclick="ClosePopup">&times;</div>
+        <div class="createforum-form">
+            <h2>@Localizer["RegisterForum"]</h2>
+            <div class="createforum-form-element">
+                <label for="nombre">@Localizer["Name"]</label>
+                <input type="text" id="Titulo" placeholder="@Localizer["EnterTitle"]" @bind-value="Titulo">
+            </div>
+            <div class="createforum-form-element">
+                <label for="descripcion">@Localizer["Description"]</label>
+                <input type="text" id="descripcion" placeholder="@Localizer["EnterDescription"]" @bind-value="Descripcion">
+            </div>
+            <div class="createforum-form-element createforum-autosuggest">
+                <label for="videojuego">@Localizer["VideoGame"]</label>
+                <input type="text" placeholder="@Localizer["TypeToSearch"]" @bind="searchText" @oninput="OnInputChanged" @onfocus="ShowSuggestions" />
+                <ul class="suggestions-list @(showSuggestions && filteredSuggestions.Any() ? "active" : "")">
+                    @foreach (var suggestion in filteredSuggestions)
+                    {
+                        <li class="suggestion-item" @onclick="() => SelectSuggestion(suggestion)">
+                            @suggestion
+                        </li>
+                    }
+                </ul>
+            </div>
+            <div class="createforum-form-element">
+                <button @onclick="Submit">@Localizer["Register"]</button>
+            </div>
+        </div>
+    </div>
+}
+@code {
+    private string Descripcion = "";
+    private string Titulo = "";
+    private string searchText = "";
+    private List<string> filteredSuggestions = new();
+    private bool showSuggestions = false;
+    private List<string> options = new();
+    private bool isSubmitting = false;
+
+    public ForoRequest foroRequest = new ForoRequest();
+
+    [Parameter] public bool ShowPopup { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private async void ClosePopup()
+    {
+        ShowPopup = false;
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        searchText = e.Value?.ToString() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            filteredSuggestions.Clear();
+            showSuggestions = false;
+            return;
+        }
+        try
+        {
+            var user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+            httpClient.DefaultRequestHeaders.Clear();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+            var result = await httpClient.GetFromJsonAsync<List<VideojuegoForoReponse>>($"Videojuego/BuscarVideojuegoForo?nombre={searchText}&pageSize=10");
+
+            filteredSuggestions = result?.Select(v => v.Nombre).ToList() ?? new List<string>();
+            showSuggestions = filteredSuggestions.Any();
+        }
+        catch (Exception)
+        {
+            // Manejo de errores
+        }
+    }
+
+    private void SelectSuggestion(string suggestion)
+    {
+        searchText = suggestion;
+        showSuggestions = false;
+    }
+
+    private void ShowSuggestions()
+    {
+        showSuggestions = true;
+    }
+
+    private async Task Submit()
+    {
+        try
+        {
+            isSubmitting = true;
+            StateHasChanged();
+
+            var user = await sessionStorage.GetItemAsync<LoginTokenResponse>("user");
+            httpClient.DefaultRequestHeaders.Clear();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+
+            foroRequest.User_ID = string.Empty;
+            foroRequest.FechaCreado = DateTime.Now;
+            foroRequest.Titulo = Titulo;
+            foroRequest.Descripcion = Descripcion;
+            foroRequest.Activo = true;
+
+            var videojuegoSeleccionado = await httpClient.GetFromJsonAsync<VideojuegoForoReponse>(
+                $"Videojuego/ObtenerVideojuegoForo?nombre={searchText}");
+            if (videojuegoSeleccionado != null)
+            {
+                foroRequest.Videojuego_Codigo = videojuegoSeleccionado.Codigo;
+            }
+            else
+            {
+                throw new Exception(Localizer["InvalidVideoGame"]);
+            }
+
+            var result = await httpClient.PostAsJsonAsync<ForoRequest>($"Foro/RegistrarForo", foroRequest);
+
+            if (result.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Foro creado", Severity.Success, options =>
+                {
+                    options.VisibleStateDuration = 1000;
+                });
+            }
+            ClosePopup();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al registrar foro", Severity.Error, options =>
+            {
+                options.VisibleStateDuration = 1000;
+            });
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+}
